@@ -1,0 +1,42 @@
+---
+export interface Props {
+  user: import('../types/profile').Profile
+}
+
+const { user } = Astro.props
+const nav = [
+  { href: '/overview', label: 'Dashboard', icon: 'grid' },
+  { href: '/students', label: 'Students', icon: 'users' },
+  { href: '/counselling', label: 'Counselling', icon: 'message-square' },
+  { href: '/followups', label: 'Follow-ups', icon: 'bell' },
+  { href: '/calendar', label: 'Calendar', icon: 'calendar' },
+  { href: '/settings', label: 'Settings', icon: 'settings' },
+]
+const currentPath = Astro.url.pathname
+---
+
+<aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+  <div class="h-16 flex items-center px-6 border-b border-gray-200">
+    <span class="text-xl font-bold text-indigo-600">Panacea</span>
+    <span class="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full capitalize">{user.role}</span>
+  </div>
+  <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+    {nav.map(item => (
+      <a
+        href={item.href}
+        class={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+          currentPath.startsWith(item.href)
+            ? 'bg-indigo-50 text-indigo-700'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        }`}
+      >
+        <span class="w-5 h-5" />
+        {item.label}
+      </a>
+    ))}
+  </nav>
+  <div class="px-3 py-4 border-t border-gray-200">
+    <div class="text-xs text-gray-500 font-medium">Branch</div>
+    <div class="text-sm font-medium capitalize mt-0.5">{user.branch}</div>
+  </div>
+</aside>

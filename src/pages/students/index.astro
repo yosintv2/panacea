@@ -1,0 +1,55 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import StudentTable from '../../components/StudentTable.astro'
+import { supabase } from '../../lib/supabase'
+
+const user = Astro.locals.user as import('../../types/profile').Profile
+
+let query = supabase
+  .from('students')
+  .select('*')
+  .order('created_at', { ascending: false })
+
+if (user.role !== 'admin') {
+  query = query.eq('branch', user.branch)
+}
+
+const search = Astro.url.searchParams.get('q')
+if (search) {
+  query = query.ilike('name', `%${search}%`)
+}
+
+const { data: students } = await query
+---
+
+<Layout title="Students" user={user}>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-gray-900">Students</h1>
+      <a
+        href="/students/new"
+        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+      >
+        + New Student
+      </a>
+    </div>
+
+    <form class="flex gap-2">
+      <input
+        type="text"
+        name="q"
+        placeholder="Search by name..."
+        value={search ?? ''}
+        class="flex-1 max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+      />
+      <button
+        type="submit"
+        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+      >
+        Search
+      </button>
+    </form>
+
+    <StudentTable students={students ?? []} />
+  </div>
+</Layout>

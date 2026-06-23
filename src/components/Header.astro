@@ -1,0 +1,29 @@
+---
+import { signOut } from '../lib/auth'
+
+export interface Props {
+  user: import('../types/profile').Profile
+}
+
+const { user } = Astro.props
+---
+
+<header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
+  <div>
+    <h1 class="text-lg font-semibold text-gray-900">Welcome, {user.full_name}</h1>
+  </div>
+  <div class="flex items-center gap-4">
+    <div class="text-sm text-right">
+      <div class="font-medium text-gray-900">{user.full_name}</div>
+      <div class="text-gray-500 text-xs">{user.email}</div>
+    </div>
+    <form method="post" action="/api/logout" class="inline">
+      <button
+        type="submit"
+        class="text-sm text-gray-500 hover:text-red-600 transition-colors font-medium"
+      >
+        Sign out
+      </button>
+    </form>
+  </div>
+</header>

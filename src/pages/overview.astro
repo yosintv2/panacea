@@ -1,0 +1,79 @@
+---
+import Layout from '../layouts/Layout.astro'
+import DashboardCards from '../components/DashboardCards.astro'
+import { supabase } from '../lib/supabase'
+
+const user = Astro.locals.user as import('../types/profile').Profile
+
+const { data: students } = await supabase.from('students').select('*').eq('branch', user.branch)
+
+const totalStudents = students?.length ?? 0
+const newLeads = students?.filter(s => s.status === 'lead').length ?? 0
+const appliedStudents = students?.filter(s => s.status === 'applied').length ?? 0
+const visaApproved = students?.filter(s => s.status === 'visa_approved').length ?? 0
+
+const today = new Date().toISOString().split('T')[0]
+const { count: todayFollowups } = await supabase
+  .from('followups')
+  .select('*', { count: 'exact', head: true })
+  .eq('next_date', today)
+  .eq('status', 'pending')
+
+const { count: pendingDocuments } = await supabase
+  .from('students')
+  .select('*', { count: 'exact', head: true })
+  .eq('status', 'documents_pending')
+  .eq('branch', user.branch)
+---
+
+<Layout title="Dashboard" user={user}>
+  <div class="space-y-6">
+    <DashboardCards
+      totalStudents={totalStudents}
+      newLeads={newLeads}
+      appliedStudents={appliedStudents}
+      visaApproved={visaApproved}
+      todayFollowups={todayFollowups ?? 0}
+      pendingDocuments={pendingDocuments ?? 0}
+    />
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <h2 class="text-base font-semibold text-gray-900 mb-4">Recent Students</h2>
+        {students && students.length > 0 ? (
+          <ul class="space-y-3">
+            {students.slice(0, 5).map(s => (
+              <li class="flex items-center justify-between text-sm">
+                <a href={`/students/${s.id}`} class="font-medium text-gray-900 hover:text-indigo-600">{s.name}</a>
+                <span class="text-xs capitalize text-gray-500">{s.status.replace(/_/g, ' ')}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="text-sm text-gray-400">No students yet. <a href="/students/new" class="text-indigo-600">Add one</a></p>
+        )}
+      </div>
+
+      <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <h2 class="text-base font-semibold text-gray-900 mb-4">Student Journey</h2>
+        <div class="space-y-2">
+          {['lead', 'documents_pending', 'applied', 'coe_received', 'visa_approved', 'joined'].map(stage => {
+            const count = students?.filter(s => s.status === stage).length ?? 0
+            const pct = totalStudents > 0 ? Math.round((count / totalStudents) * 100) : 0
+            return (
+              <div key={stage} class="text-sm">
+                <div class="flex justify-between mb-1">
+                  <span class="text-gray-600 capitalize">{stage.replace(/_/g, ' ')}</span>
+                  <span class="font-medium text-gray-900">{count}</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-1.5">
+                  <div class="bg-indigo-500 h-1.5 rounded-full" style={`width: ${pct}%`} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,184 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { supabase } from '../../lib/supabase'
+
+const user = Astro.locals.user as import('../../types/profile').Profile
+
+let query = supabase
+  .from('counselling')
+  .select('*, students (id, name, mobile, status)')
+  .order('created_at', { ascending: false })
+
+if (user.role !== 'admin') {
+  query = query.eq('students.branch', user.branch)
+}
+
+const { data: records } = await query
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData()
+  const { error } = await supabase.from('counselling').insert({
+    student_id: form.get('student_id') as string,
+    counsellor_id: user.id,
+    referer_name: form.get('referer_name') as string,
+    gpa: form.get('gpa') as string,
+    permanent_address: form.get('permanent_address') as string,
+    temporary_address: form.get('temporary_address') as string,
+    city_choice: form.get('city_choice') as string,
+    country_interest: form.get('country_interest') as string,
+    job_included: form.get('job_included') === 'on',
+    qualification: form.get('qualification') as string,
+    passed_year: form.get('passed_year') ? parseInt(form.get('passed_year') as string) : null,
+    college_name: form.get('college_name') as string,
+    visa_type: form.get('visa_type') as string,
+    contact_number: form.get('contact_number') as string,
+    remarks: form.get('remarks') as string,
+  })
+  if (!error) {
+    return Astro.redirect('/counselling')
+  }
+}
+---
+
+<Layout title="Counselling" user={user}>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-gray-900">Counselling Records</h1>
+      <button
+        id="new-counselling-btn"
+        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+      >
+        + New Record
+      </button>
+    </div>
+
+    <div class="overflow-x-auto bg-white rounded-xl border border-gray-200 shadow-sm">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600 font-medium">
+            <th class="px-4 py-3">Student</th>
+            <th class="px-4 py-3">Qualification</th>
+            <th class="px-4 py-3">Country</th>
+            <th class="px-4 py-3">City Choice</th>
+            <th class="px-4 py-3">Visa Type</th>
+            <th class="px-4 py-3">Job</th>
+            <th class="px-4 py-3">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {records?.map(r => (
+            <tr class="border-b border-gray-100 hover:bg-gray-50">
+              <td class="px-4 py-3">
+                <a href={`/students/${r.student_id}`} class="font-medium text-gray-900 hover:text-indigo-600">
+                  {(r.students as any)?.name ?? 'Unknown'}
+                </a>
+                <div class="text-xs text-gray-400">{(r.students as any)?.mobile}</div>
+              </td>
+              <td class="px-4 py-3 capitalize text-gray-700">{r.qualification ?? '-'}</td>
+              <td class="px-4 py-3 text-gray-700">{r.country_interest ?? '-'}</td>
+              <td class="px-4 py-3 text-gray-700">{r.city_choice ?? '-'}</td>
+              <td class="px-4 py-3 text-gray-700">{r.visa_type ?? '-'}</td>
+              <td class="px-4 py-3 text-gray-700">{r.job_included ? 'Yes' : 'No'}</td>
+              <td class="px-4 py-3 text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div id="counselling-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">New Counselling Record</h2>
+        <form method="POST" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Student ID *</label>
+              <input type="text" name="student_id" required placeholder="Paste the student UUID" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Referer Name</label>
+              <input type="text" name="referer_name" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">GPA</label>
+              <input type="text" name="gpa" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Qualification</label>
+              <select name="qualification" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="">Select</option>
+                <option value="+2">+2</option>
+                <option value="bachelor">Bachelor</option>
+                <option value="master">Master</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Passed Year</label>
+              <input type="number" name="passed_year" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">College Name</label>
+              <input type="text" name="college_name" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Country Interest</label>
+              <input type="text" name="country_interest" value="Japan" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">City Choice</label>
+              <input type="text" name="city_choice" placeholder="e.g. Tokyo, Osaka" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Visa Type</label>
+              <input type="text" name="visa_type" placeholder="e.g. Student" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+              <input type="tel" name="contact_number" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Permanent Address</label>
+              <textarea name="permanent_address" rows={2} class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Temporary Address</label>
+              <textarea name="temporary_address" rows={2} class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+            </div>
+          </div>
+
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="job_included" class="rounded border-gray-300" />
+            <span class="text-gray-700">Job placement included</span>
+          </label>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+            <textarea name="remarks" rows={3} class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+          </div>
+
+          <div class="flex gap-3">
+            <button type="submit" class="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+              Save Record
+            </button>
+            <button type="button" id="close-modal" class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const btn = document.getElementById('new-counselling-btn')
+    const modal = document.getElementById('counselling-modal')
+    const close = document.getElementById('close-modal')
+    btn?.addEventListener('click', () => modal?.classList.remove('hidden'))
+    close?.addEventListener('click', () => modal?.classList.add('hidden'))
+    modal?.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden') })
+  </script>
+</Layout>
