@@ -1,0 +1,13 @@
+name = "panacea-crm"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "./dist"
+
+[placement]
+mode = "smart"
+
+[env.production]
+vars = { PUBLIC_SUPABASE_URL = "https://cdrlxaocenqgcwncjlsx.supabase.co", PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkcmx4YW9jZW5xZ2N3bmNqbHN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxODM5MzMsImV4cCI6MjA5Nzc1OTkzM30.mWUYrz-qUSCarGGNKgnkVp4PEL3q_I8pmcNS19Yn9Xc" }
+
+[[env.production.kv_namespaces]]
+binding = "SESSION"
+id = "a8c0473dd1ed48d7b9dc90a321fce628"
