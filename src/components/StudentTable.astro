@@ -38,9 +38,9 @@ const statusStyles: Record<string, string> = {
           <td>
             <div class="flex items-center gap-3 flex-nowrap pointer-events-none">
               <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                {s.name.charAt(0).toUpperCase()}
+                {(s.name || '?').charAt(0).toUpperCase()}
               </div>
-              <span class="font-semibold text-text-primary">{s.name}</span>
+              <span class="font-semibold text-text-primary">{s.name || 'Unknown'}</span>
             </div>
           </td>
           <td>
