@@ -41,3 +41,7 @@ ALTER TABLE counselling ADD COLUMN IF NOT EXISTS mobile TEXT;
 ALTER TABLE counselling ADD COLUMN IF NOT EXISTS dob DATE;
 -- Make student_id optional (counselling is pre-enrollment, separate from students)
 ALTER TABLE counselling ALTER COLUMN student_id DROP NOT NULL;
+
+-- 7. Backfill existing counselling records: copy referer_name → name, contact_number → mobile
+UPDATE counselling SET name = referer_name WHERE name IS NULL AND referer_name IS NOT NULL;
+UPDATE counselling SET mobile = contact_number WHERE mobile IS NULL AND contact_number IS NOT NULL;
