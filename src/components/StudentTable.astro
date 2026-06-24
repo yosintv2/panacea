@@ -19,7 +19,7 @@ const statusStyles: Record<string, string> = {
 }
 ---
 
-<div class="mobile-table">
+<div class="overflow-x-auto">
   <table class="table-base">
     <thead>
       <tr>
@@ -36,7 +36,7 @@ const statusStyles: Record<string, string> = {
       {students.map(s => (
         <tr class="group cursor-pointer transition-all duration-150 hover:bg-surface-hover/80" onclick={`window.location.href='/students/${s.id}'`} role="link" tabindex="0" onkeydown={`if(event.key==='Enter')window.location.href='/students/${s.id}'`}>
           <td>
-            <div class="flex items-center gap-3 flex-nowrap pointer-events-none">
+            <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                 {(s.name || '?').charAt(0).toUpperCase()}
               </div>
@@ -44,24 +44,24 @@ const statusStyles: Record<string, string> = {
             </div>
           </td>
           <td>
-              <div class="text-text-secondary whitespace-nowrap">{s.mobile || '-'}</div>
+            <div class="text-text-secondary">{s.mobile || '-'}</div>
             {s.email && <div class="text-xs text-text-muted">{s.email}</div>}
           </td>
           <td>
-            <span class="inline-flex items-center gap-1 text-xs text-text-muted bg-gray-100 px-2 py-1 rounded-md capitalize whitespace-nowrap">
-              {s.lead_source.replace(/_/g, ' ')}
+            <span class="inline-flex items-center gap-1 text-xs text-text-muted bg-gray-100 px-2 py-1 rounded-md capitalize">
+              {s.lead_source?.replace(/_/g, ' ') || '-'}
             </span>
           </td>
           <td>
-            <span class={`status-badge border whitespace-nowrap ${statusStyles[s.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-              {s.status.replace(/_/g, ' ')}
+            <span class={`status-badge border ${statusStyles[s.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              {s.status?.replace(/_/g, ' ') || '-'}
             </span>
           </td>
           <td>
-            <span class="text-text-secondary capitalize text-sm whitespace-nowrap">{s.branch}</span>
+            <span class="text-text-secondary capitalize text-sm">{s.branch || '-'}</span>
           </td>
-          <td class="text-xs text-text-muted whitespace-nowrap">
-            {new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          <td class="text-xs text-text-muted">
+            {s.created_at ? new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
           </td>
           {showActions && (
             <td class="text-right">

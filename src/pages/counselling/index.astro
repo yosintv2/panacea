@@ -14,12 +14,10 @@ if (token) {
   }
 }
 
-let query = supabase
+const { data: records } = await supabase
   .from('counselling')
   .select('*')
   .order('created_at', { ascending: false })
-
-const { data: records } = await query
 
 let insertError: string | null = null
 
@@ -56,14 +54,11 @@ if (Astro.request.method === 'POST') {
     } else {
       ({ error } = await supabase.from('counselling').insert({ ...payload, counsellor_id: authUser?.id ?? '00000000-0000-0000-0000-000000000000' }))
     }
-    if (!error) {
-      return Astro.redirect('/counselling')
-    }
+    if (!error) return Astro.redirect('/counselling')
     insertError = error.message
   }
 }
 const recordsJson = JSON.stringify(records)
-const debugJson = JSON.stringify(records?.[0] ?? {})
 ---
 
 <Layout title="Counselling" user={profile}>
@@ -85,7 +80,7 @@ const debugJson = JSON.stringify(records?.[0] ?? {})
       <div class="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{insertError}</div>
     )}
 
-    <div class="card mobile-table">
+    <div class="card overflow-x-auto">
       <table class="table-base">
         <thead>
           <tr>
@@ -101,42 +96,35 @@ const debugJson = JSON.stringify(records?.[0] ?? {})
         </thead>
         <tbody id="records-table">
           {records?.map(r => {
-            const displayName = r.name || r.referer_name || 'Unknown'
-            const displayMobile = r.mobile || r.contact_number || '-'
+            const name = r.name || r.referer_name || 'Unknown'
+            const mobile = r.mobile || r.contact_number || '-'
             return (
-            <tr class="group cursor-pointer" onclick={`openEditModal('${r.id}')`}>
-              <td>
-                <div class="flex items-center gap-3 flex-nowrap pointer-events-none">
-                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {displayName.charAt(0).toUpperCase()}
+              <tr class="group cursor-pointer" onclick={`openEditModal('${r.id}')`}>
+                <td><span class="font-semibold text-text-primary">{name}</span></td>
+                <td class="text-text-secondary">{mobile}</td>
+                <td class="capitalize text-text-secondary">{r.qualification || '-'}</td>
+                <td class="text-text-secondary">{r.city_choice || '-'}</td>
+                <td class="text-text-secondary">{r.visa_type || '-'}</td>
+                <td>
+                  <span class={`status-badge ${r.job_included ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                    {r.job_included ? 'Yes' : 'No'}
+                  </span>
+                </td>
+                <td class="text-xs text-text-muted">{new Date(r.created_at).toLocaleDateString()}</td>
+                <td class="text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button type="button" class="edit-btn text-primary-600 hover:text-primary-700 text-sm font-semibold" data-id={r.id}>Edit</button>
+                    <form method="POST" class="inline" onsubmit="return confirm('Delete this counselling record?')">
+                      <input type="hidden" name="action" value="delete" />
+                      <input type="hidden" name="id" value={r.id} />
+                      <button type="submit" class="text-red-500 hover:text-red-700 text-sm font-semibold">Delete</button>
+                    </form>
                   </div>
-                  <span class="font-semibold text-text-primary whitespace-nowrap">{displayName}</span>
-                </div>
-              </td>
-              <td class="text-text-secondary whitespace-nowrap">{displayMobile}</td>
-              <td class="capitalize text-text-secondary whitespace-nowrap">{r.qualification || '-'}</td>
-              <td class="text-text-secondary whitespace-nowrap">{r.city_choice || '-'}</td>
-              <td class="text-text-secondary whitespace-nowrap">{r.visa_type || '-'}</td>
-              <td>
-                <span class={`status-badge whitespace-nowrap ${r.job_included ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
-                  {r.job_included ? 'Yes' : 'No'}
-                </span>
-              </td>
-              <td class="text-xs text-text-muted whitespace-nowrap">{new Date(r.created_at).toLocaleDateString()}</td>
-              <td class="text-right">
-                <div class="flex items-center justify-end gap-2">
-                  <button type="button" class="edit-btn text-primary-600 hover:text-primary-700 text-sm font-semibold" data-id={r.id}>Edit</button>
-                  <form method="POST" class="inline" onsubmit="return confirm('Delete this counselling record?')">
-                    <input type="hidden" name="action" value="delete" />
-                    <input type="hidden" name="id" value={r.id} />
-                    <button type="submit" class="text-red-500 hover:text-red-700 text-sm font-semibold">Delete</button>
-                  </form>
-                </div>
-              </td>
+                </td>
               </tr>
             )
           })}
-          </tbody>
+        </tbody>
       </table>
       {(!records || records.length === 0) && (
         <div class="flex flex-col items-center py-16 text-text-muted">
@@ -263,20 +251,21 @@ const debugJson = JSON.stringify(records?.[0] ?? {})
         modalTitle.textContent = 'Edit Counselling Record';
         submitBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"><\/svg> Update Record';
         idField.value = record.id;
-        form.querySelector('[name="name"]').value = record.name ?? '';
-        form.querySelector('[name="mobile"]').value = record.mobile ?? '';
-        form.querySelector('[name="dob"]').value = record.dob ?? '';
-        form.querySelector('[name="referer_name"]').value = record.referer_name ?? '';
-        form.querySelector('[name="gpa"]').value = record.gpa ?? '';
-        form.querySelector('[name="qualification"]').value = record.qualification ?? '';
-        form.querySelector('[name="passed_year"]').value = record.passed_year ?? '';
-        form.querySelector('[name="visa_type"]').value = record.visa_type ?? '';
-        form.querySelector('[name="city_choice"]').value = record.city_choice ?? '';
-        form.querySelector('[name="contact_number"]').value = record.contact_number ?? '';
-        form.querySelector('[name="permanent_address"]').value = record.permanent_address ?? '';
-        form.querySelector('[name="temporary_address"]').value = record.temporary_address ?? '';
-        form.querySelector('[name="job_included"]').checked = record.job_included ?? false;
-        form.querySelector('[name="remarks"]').value = record.remarks ?? '';
+        const f = (name) => form.querySelector(`[name="${name}"]`);
+        f('name').value = record.name || record.referer_name || '';
+        f('mobile').value = record.mobile || record.contact_number || '';
+        f('dob').value = record.dob ?? '';
+        f('referer_name').value = record.referer_name ?? '';
+        f('gpa').value = record.gpa ?? '';
+        f('qualification').value = record.qualification ?? '';
+        f('passed_year').value = record.passed_year ?? '';
+        f('visa_type').value = record.visa_type ?? '';
+        f('city_choice').value = record.city_choice ?? '';
+        f('contact_number').value = record.contact_number ?? '';
+        f('permanent_address').value = record.permanent_address ?? '';
+        f('temporary_address').value = record.temporary_address ?? '';
+        f('job_included').checked = record.job_included ?? false;
+        f('remarks').value = record.remarks ?? '';
       } else {
         modalTitle.textContent = 'New Counselling Record';
         submitBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"><\/svg> Save Record';
