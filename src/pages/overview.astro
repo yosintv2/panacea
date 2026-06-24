@@ -22,135 +22,152 @@ const pendingDocuments = students?.filter(s => s.status === 'documents_pending')
 const coeReceived = students?.filter(s => s.status === 'coe_received').length ?? 0
 const joined = students?.filter(s => s.status === 'joined').length ?? 0
 
-const recentStudents = students?.slice(0, 5) ?? []
 const today = new Date()
 const dayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
 const timeStr = today.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
 const greeting = today.getHours() < 12 ? 'Morning' : today.getHours() < 17 ? 'Afternoon' : 'Evening'
 
 const stages = [
-  { key: 'lead', label: 'Leads', count: newLeads, color: '#f59e0b', bg: 'rgba(245,158,11,.06)', border: 'rgba(245,158,11,.13)', icon: '🎯' },
-  { key: 'documents_pending', label: 'Documents', count: pendingDocuments, color: '#3b82f6', bg: 'rgba(59,130,246,.06)', border: 'rgba(59,130,246,.13)', icon: '📄' },
-  { key: 'applied', label: 'Applied', count: appliedStudents, color: '#8b5cf6', bg: 'rgba(139,92,246,.06)', border: 'rgba(139,92,246,.13)', icon: '📋' },
-  { key: 'coe_received', label: 'COE Received', count: coeReceived, color: '#06b6d4', bg: 'rgba(6,182,212,.06)', border: 'rgba(6,182,212,.13)', icon: '✅' },
-  { key: 'visa_approved', label: 'Visa Approved', count: visaApproved, color: '#10b981', bg: 'rgba(16,185,129,.06)', border: 'rgba(16,185,129,.13)', icon: '🛂' },
-  { key: 'joined', label: 'Joined', count: joined, color: '#22c55e', bg: 'rgba(34,197,94,.06)', border: 'rgba(34,197,94,.13)', icon: '🎓' },
+  { key: 'lead', label: 'Leads', count: newLeads, color: '#f59e0b', bg: 'rgba(245,158,11,.06)', border: 'rgba(245,158,11,.13)', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z' },
+  { key: 'documents_pending', label: 'Documents', count: pendingDocuments, color: '#3b82f6', bg: 'rgba(59,130,246,.06)', border: 'rgba(59,130,246,.13)', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { key: 'applied', label: 'Applied', count: appliedStudents, color: '#8b5cf6', bg: 'rgba(139,92,246,.06)', border: 'rgba(139,92,246,.13)', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { key: 'coe_received', label: 'COE Received', count: coeReceived, color: '#06b6d4', bg: 'rgba(6,182,212,.06)', border: 'rgba(6,182,212,.13)', icon: 'M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z' },
+  { key: 'visa_approved', label: 'Visa Approved', count: visaApproved, color: '#10b981', bg: 'rgba(16,185,129,.06)', border: 'rgba(16,185,129,.13)', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { key: 'joined', label: 'Joined', count: joined, color: '#22c55e', bg: 'rgba(34,197,94,.06)', border: 'rgba(34,197,94,.13)', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z' },
 ]
 
-const QUICK_ACTIONS = [
-  { href: '/students', label: 'Students', desc: 'Manage student profiles', color: '#6366f1', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z' },
-  { href: '/counselling', label: 'Counselling', desc: 'Log sessions & follow-ups', color: '#8b5cf6', icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' },
-  { href: '/attendance', label: 'Attendance', desc: 'Track student attendance', color: '#06b6d4', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { href: '/students/new', label: 'Add Student', desc: 'Register a new student', color: '#10b981', icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z' },
+const TOOLS = [
+  { href: '/students', label: 'Students', desc: 'Manage student profiles', color: '#6366f1', bg: 'rgba(99,102,241,.06)', border: 'rgba(99,102,241,.13)', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z' },
+  { href: '/counselling', label: 'Counselling', desc: 'Log sessions & follow-ups', color: '#8b5cf6', bg: 'rgba(139,92,246,.06)', border: 'rgba(139,92,246,.13)', icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' },
+  { href: '/attendance', label: 'Attendance', desc: 'Track student attendance', color: '#06b6d4', bg: 'rgba(6,182,212,.06)', border: 'rgba(6,182,212,.13)', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { href: '/students/new', label: 'Add Student', desc: 'Register a new student', color: '#10b981', bg: 'rgba(16,185,129,.06)', border: 'rgba(16,185,129,.13)', icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z' },
 ]
 ---
 
 <Layout title="Dashboard" user={profile}>
-  <div style="max-width: 1024px; padding: 32px 32px 52px;">
+  <div style="padding: 32px 32px 52px; max-width: 980px">
+
     <!-- Header -->
-    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px">
       <div>
-        <h1 style="font-size: 22px; font-weight: 600; color: #e4e4e7; letter-spacing: -0.025em; margin: 0; line-height: 1.2;">
+        <h1 style="font-size: 22px; font-weight: 600; color: #e4e4e7; letter-spacing: -.025em; margin: 0; line-height: 1.2">
           Good {greeting}, <span style="color: #818cf8">{profile?.full_name?.split(' ')[0] || 'User'}</span>
         </h1>
-        <p style="font-size: 11px; color: #3f3f46; margin: 6px 0 0; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em;">
+        <p style="font-size: 11px; color: #3f3f46; margin: 6px 0 0; font-family: 'JetBrains Mono', monospace; letter-spacing: .04em">
           {dayStr} · Panacea CRM
         </p>
       </div>
-      <div style="text-align: right;">
-        <div style="font-size: 30px; font-weight: 300; color: #a1a1aa; letter-spacing: -0.01em; font-family: 'JetBrains Mono', monospace; line-height: 1;">
+      <div style="text-align: right">
+        <div style="font-size: 30px; font-weight: 300; color: #a1a1aa; letter-spacing: -.01em; font-family: 'JetBrains Mono', monospace; line-height: 1">
           {timeStr}
         </div>
-        <div style="font-size: 9px; color: #2d2d2d; margin-top: 5px; letter-spacing: 0.1em; font-family: 'JetBrains Mono', monospace; text-transform: uppercase;">
+        <div style="font-size: 9px; color: #2d2d2d; margin-top: 5px; letter-spacing: .1em; font-family: 'JetBrains Mono', monospace; text-transform: uppercase">
           local time
         </div>
       </div>
     </div>
 
-    <!-- Pipeline stat cards -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px;">
+    <!-- Stat cards -->
+    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 24px">
       {stages.map(s => (
-        <a href={`/students?status=${s.key}`} style="display: block; background: #141414; border: 1px solid {s.border}; border-radius: 12px; padding: 16px 16px 14px; text-decoration: none; transition: 0.14s ease;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-            <span style="font-size: 18px; line-height: 1;">{s.icon}</span>
+        <a href={`/students?status=${s.key}`} style="display: block; background: #141414; border: 1px solid {s.border}; border-radius: 12px; padding: 18px 18px 16px; text-decoration: none; transition: .14s ease">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px">
+            <div style="width: 32px; height: 32px; background: {s.bg}; border: 1px solid {s.border}; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: {s.color}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d={s.icon} />
+              </svg>
+            </div>
           </div>
-          <div style="font-size: 24px; font-weight: 700; color: {s.color}; letter-spacing: -0.02em; line-height: 1; font-family: 'JetBrains Mono', monospace;">{s.count}</div>
-          <div style="font-size: 10px; color: #52525b; margin-top: 6px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em;">{s.label}</div>
+          <div style="font-size: 26px; font-weight: 700; color: {s.color}; letter-spacing: -.02em; line-height: 1; font-family: 'JetBrains Mono', monospace">{s.count}</div>
+          <div style="font-size: 10px; color: #52525b; margin-top: 7px; font-family: 'JetBrains Mono', monospace; letter-spacing: .04em">{s.label}</div>
         </a>
       ))}
     </div>
 
-    <!-- Main grid: Recent Students + Pipeline -->
-    <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 28px;">
-      <!-- Recent Students -->
-      <div style="background: #141414; border: 1px solid rgba(99,102,241,.12); border-radius: 10px; overflow: hidden;">
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(99,102,241,.08);">
-          <div>
-            <div style="font-size: 12px; font-weight: 600; color: #818cf8;">Recent Students</div>
-            <div style="font-size: 9px; color: #3f3f46; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">last 5 enrolled</div>
-          </div>
-          <a href="/students" style="font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: #6366f1; text-decoration: none; font-weight: 500;">View All</a>
+    <!-- Sections row: Recent Students + Pipeline -->
+    <div style="margin-bottom: 32px">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px">
+        <div style="font-size: 9px; color: #3f3f46; letter-spacing: .14em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace">
+          Students Overview
         </div>
-        {recentStudents.length > 0 ? recentStudents.map((s, i) => (
-          <a href={`/students/${s.id}`} style="display: flex; align-items: center; gap: 12px; padding: 11px 16px; text-decoration: none; border-bottom: {i < recentStudents.length - 1 ? '1px solid rgba(255,255,255,.04)' : 'none'}; transition: 0.12s ease;">
-            <div style="width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; flex-shrink: 0;">{(s.name || '?').charAt(0).toUpperCase()}</div>
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 12px; color: #a1a1aa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;">{s.name || 'Unknown'}</div>
-              <div style="font-size: 10px; color: #52525b; margin-top: 1px;">{s.mobile || '-'}</div>
-            </div>
-            <span style="font-size: 9px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(99,102,241,.2); color: #818cf8; font-weight: 500; flex-shrink: 0; text-transform: capitalize;">{s.status?.replace(/_/g, ' ')}</span>
-          </a>
-        )) : (
-          <div style="text-align: center; padding: 32px 16px; color: #3f3f46; font-size: 11px; font-family: 'JetBrains Mono', monospace;">
-            No students yet
-          </div>
+        {totalStudents > 0 && (
+          <div style="font-size: 10px; color: #2d2d2d; font-family: 'JetBrains Mono', monospace">{totalStudents} total</div>
         )}
       </div>
-
-      <!-- Pipeline bar chart -->
-      <div style="background: #141414; border: 1px solid rgba(99,102,241,.12); border-radius: 10px; overflow: hidden;">
-        <div style="padding: 12px 16px; border-bottom: 1px solid rgba(99,102,241,.08);">
-          <div style="font-size: 12px; font-weight: 600; color: #818cf8;">Student Pipeline</div>
-          <div style="font-size: 9px; color: #3f3f46; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">{totalStudents} total students</div>
-        </div>
-        <div style="padding: 16px;">
-          {stages.map(stage => {
-            const pct = totalStudents > 0 ? Math.round((stage.count / totalStudents) * 100) : 0
-            return (
-              <div style="margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                  <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="width: 6px; height: 6px; border-radius: 50%; background: {stage.color}; flex-shrink: 0;" />
-                    <span style="font-size: 10px; color: #71717a;">{stage.label}</span>
-                  </div>
-                  <span style="font-size: 10px; font-weight: 600; color: #a1a1aa; font-family: 'JetBrains Mono', monospace;">{stage.count}</span>
-                </div>
-                <div style="width: 100%; height: 6px; background: rgba(255,255,255,.04); border-radius: 999px; overflow: hidden;">
-                  <div style="height: 100%; border-radius: 999px; background: {stage.color}; width: {pct}%; transition: width 0.7s ease;" />
-                </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px">
+        <!-- Recent Students -->
+        <div style="background: #141414; border: 1px solid rgba(99,102,241,.12); border-radius: 10px; overflow: hidden">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 15px; background: rgba(99,102,241,.035); border-bottom: 1px solid rgba(99,102,241,.08)">
+            <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.2); display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; user-select: none">👥</div>
+            <div style="flex: 1">
+              <div style="font-size: 13px; font-weight: 600; color: #818cf8; letter-spacing: -.01em">Recent Students</div>
+              <div style="font-size: 9px; color: #3f3f46; font-family: 'JetBrains Mono', monospace; margin-top: 1px">{students ? `${students.length} total` : '0 total'}</div>
+            </div>
+          </div>
+          {(students && students.length > 0 ? students.slice(0, 5) : []).length > 0 ? (students!.slice(0, 5).map((s: any, i: number) => (
+            <a href={`/students/${s.id}`} style="display: flex; align-items: center; padding: 12px 16px; border-bottom: {i < 4 ? '1px solid rgba(255,255,255,.04)' : 'none'}; gap: 12px; text-decoration: none">
+              <div style="width: 26px; height: 26px; border-radius: 6px; background: rgba(99,102,241,.08); display: flex; align-items: center; justify-content: center; font-size: 11px; color: #818cf8; flex-shrink: 0">{(s.name || '?').charAt(0).toUpperCase()}</div>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-size: 12px; color: #a1a1aa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{s.name || 'Unknown'}</div>
               </div>
-            )
-          })}
+              <div style="text-align: right; flex-shrink: 0">
+                <div style="font-size: 10px; color: #52525b; font-family: 'JetBrains Mono', monospace">{s.mobile || '-'}</div>
+              </div>
+            </a>
+          ))) : (
+            <div style="padding: 22px 16px; color: #2d2d2d; font-size: 11px; text-align: center; font-family: 'JetBrains Mono', monospace">no students yet</div>
+          )}
         </div>
+
+        <!-- Pipeline -->
+        <div style="background: #141414; border: 1px solid rgba(99,102,241,.12); border-radius: 10px; overflow: hidden">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 12px 15px; background: rgba(99,102,241,.035); border-bottom: 1px solid rgba(99,102,241,.08)">
+            <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.2); display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; user-select: none">📊</div>
+            <div style="flex: 1">
+              <div style="font-size: 13px; font-weight: 600; color: #818cf8; letter-spacing: -.01em">Student Pipeline</div>
+              <div style="font-size: 9px; color: #3f3f46; font-family: 'JetBrains Mono', monospace; margin-top: 1px">{totalStudents > 0 ? `${totalStudents} total` : '0 total'}</div>
+            </div>
+          </div>
+          <div style="padding: 16px">
+            {totalStudents > 0 ? stages.map(stage => {
+              const pct = totalStudents > 0 ? Math.round((stage.count / totalStudents) * 100) : 0
+              return (
+                <div style="margin-bottom: 12px">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px">
+                    <span style="font-size: 10px; color: #71717a">{stage.label}</span>
+                    <span style="font-size: 10px; font-weight: 600; color: {stage.color}; font-family: 'JetBrains Mono', monospace">{stage.count}</span>
+                  </div>
+                  <div style="width: 100%; height: 6px; background: rgba(255,255,255,.04); border-radius: 999px; overflow: hidden">
+                    <div style="height: 100%; border-radius: 999px; background: {stage.color}; width: {pct}%" />
+                  </div>
+                </div>
+              )
+            }) : (
+              <div style="padding: 12px 0; text-align: center; color: #2d2d2d; font-size: 11px; font-family: 'JetBrains Mono', monospace">no data</div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div style="font-size: 9px; color: #3f3f46; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; margin-bottom: 11px;">
-      Quick Actions
+    <!-- Tools -->
+    <div style="font-size: 9px; color: #3f3f46; letter-spacing: .14em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; margin-bottom: 11px">
+      Tools
     </div>
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-      {QUICK_ACTIONS.map(action => (
-        <a href={action.href} style="display: block; background: #141414; border: 1px solid rgba(255,255,255,.06); border-radius: 11px; padding: 16px; text-decoration: none; transition: 0.14s ease;">
-          <div style="width: 32px; height: 32px; background: rgba(99,102,241,.06); border: 1px solid rgba(99,102,241,.13); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 11px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{action.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="{action.icon}" />
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px">
+      {TOOLS.map(t => (
+        <a href={t.href} style="display: block; background: #141414; border: 1px solid rgba(255,255,255,.06); border-radius: 11px; padding: 16px; text-decoration: none; transition: .14s ease">
+          <div style="width: 32px; height: 32px; background: {t.bg}; border: 1px solid {t.border}; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: {t.color}; margin-bottom: 11px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d={t.icon} />
             </svg>
           </div>
-          <div style="font-size: 13px; font-weight: 500; color: #e4e4e7; margin-bottom: 3px;">{action.label}</div>
-          <div style="font-size: 11px; color: #52525b; line-height: 1.5;">{action.desc}</div>
+          <div style="font-size: 13px; font-weight: 500; color: #e4e4e7; margin-bottom: 3px">{t.label}</div>
+          <div style="font-size: 11px; color: #52525b; line-height: 1.5">{t.desc}</div>
         </a>
       ))}
     </div>
+
   </div>
 </Layout>
