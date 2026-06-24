@@ -4,27 +4,32 @@ export interface Props {
   newLeads: number
   appliedStudents: number
   visaApproved: number
-  todayFollowups: number
   pendingDocuments: number
 }
 
-const { totalStudents, newLeads, appliedStudents, visaApproved, todayFollowups, pendingDocuments } = Astro.props
+const { totalStudents, newLeads, appliedStudents, visaApproved, pendingDocuments } = Astro.props
 const cards = [
-  { label: 'Total Students', value: totalStudents, color: 'bg-indigo-600' },
-  { label: 'New Leads', value: newLeads, color: 'bg-emerald-500' },
-  { label: 'Applied', value: appliedStudents, color: 'bg-blue-500' },
-  { label: 'Visa Approved', value: visaApproved, color: 'bg-green-500' },
-  { label: "Today's Follow-ups", value: todayFollowups, color: 'bg-amber-500' },
-  { label: 'Pending Documents', value: pendingDocuments, color: 'bg-rose-500' },
+  { label: 'Total Students', value: totalStudents, href: '/students', gradient: 'from-blue-500 to-blue-600', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>' },
+  { label: 'New Leads', value: newLeads, href: '/students?status=lead', gradient: 'from-emerald-500 to-emerald-600', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>' },
+  { label: 'Applied', value: appliedStudents, href: '/students?status=applied', gradient: 'from-violet-500 to-violet-600', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' },
+  { label: 'Visa Approved', value: visaApproved, href: '/students?status=visa_approved', gradient: 'from-amber-500 to-amber-600', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>' },
+  { label: 'Pending Documents', value: pendingDocuments, href: '/students?status=documents_pending', gradient: 'from-cyan-500 to-cyan-600', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>' },
 ]
 ---
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-  {cards.map(card => (
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-      <div class={`w-3 h-3 rounded-full ${card.color} mb-2`} />
-      <div class="text-2xl font-bold text-gray-900">{card.value}</div>
-      <div class="text-sm text-gray-500 mt-1">{card.label}</div>
-    </div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+  {cards.map((card, i) => (
+    <a
+      href={card.href}
+      class="card card-hover p-5 relative overflow-hidden group"
+      style={`animation: fade-up 0.5s ease-out ${i * 0.08}s forwards; opacity: 0;`}
+    >
+      <div class="flex items-start justify-between mb-4">
+        <div class={`w-11 h-11 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-white shadow-sm`} set:html={card.icon} />
+      </div>
+      <div class="text-2xl font-bold text-text-primary mb-0.5">{card.value}</div>
+      <div class="text-sm text-text-muted">{card.label}</div>
+      <div class="absolute inset-0 bg-gradient-to-br from-white/0 to-white/0 group-hover:from-primary-50/30 to-transparent transition-all duration-300 pointer-events-none" />
+    </a>
   ))}
 </div>

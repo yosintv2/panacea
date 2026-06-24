@@ -1,19 +1,45 @@
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 
-export function createSupabaseServerClient(request: Request) {
-  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY
 
-  const cookies = request.headers.get('cookie') ?? ''
-
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get(name: string) {
-        const match = cookies.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`))
-        return match?.[1] ?? null
-      },
-      set() {},
-      remove() {},
+export function createSupabaseServerClient() {
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
     },
   })
+  return { client }
+}
+
+export function getAuthToken(request: Request): string | null {
+  const cookies = request.headers.get('cookie') ?? ''
+  for (const c of cookies.split(';')) {
+    const [name, ...rest] = c.trim().split('=')
+    if (name.trim() === 'sb-access-token') {
+      return decodeURIComponent(rest.join('=').trim())
+    }
+  }
+  return null
+}
+
+export async function getServerUser(token: string | undefined) {
+  if (!token) return null
+  const { client } = createSupabaseServerClient()
+  const { data: { user } } = await client.auth.getUser(token)
+  if (!user) return null
+  const { data: profile } = await client.from('profiles').select('*').eq('id', user.id).single()
+  return { user, profile }
+}
+
+export async function getAuthProfile(locals: Record<string, unknown>) {
+  const token = locals.token as string | undefined
+  if (!token) return null
+  const { client } = createSupabaseServerClient()
+  const { data: { user } } = await client.auth.getUser(token)
+  if (!user) return null
+  const { data: profile } = await client.from('profiles').select('*').eq('id', user.id).single()
+  return profile
 }

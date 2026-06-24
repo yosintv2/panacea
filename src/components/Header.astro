@@ -1,29 +1,38 @@
 ---
-import { signOut } from '../lib/auth'
-
 export interface Props {
   user: import('../types/profile').Profile
 }
 
 const { user } = Astro.props
+const pageName = Astro.url.pathname === '/overview' ? 'Dashboard'
+  : Astro.url.pathname.split('/').filter(Boolean).pop()?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Dashboard'
 ---
 
-<header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
-  <div>
-    <h1 class="text-lg font-semibold text-gray-900">Welcome, {user.full_name}</h1>
+<header class="h-16 bg-white border-b border-border flex items-center justify-between px-4 lg:px-6 shrink-0">
+  <div class="flex items-center gap-2 text-sm">
+    <button id="sidebar-toggle" type="button" class="lg:hidden p-1.5 -ml-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+    </button>
+    <a href="/overview" class="hidden sm:inline text-text-muted hover:text-text-secondary transition-colors font-medium">Home</a>
+    <svg class="hidden sm:block w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    <span class="text-text-primary font-semibold">{pageName}</span>
   </div>
+
   <div class="flex items-center gap-4">
-    <div class="text-sm text-right">
-      <div class="font-medium text-gray-900">{user.full_name}</div>
-      <div class="text-gray-500 text-xs">{user.email}</div>
-    </div>
-    <form method="post" action="/api/logout" class="inline">
-      <button
-        type="submit"
-        class="text-sm text-gray-500 hover:text-red-600 transition-colors font-medium"
-      >
+    <form method="post" action="/api/logout">
+      <button type="submit" class="btn-secondary text-xs px-3 py-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
         Sign out
       </button>
     </form>
+    <div class="flex items-center gap-3 pl-4 border-l border-border-light">
+      <div class="text-right">
+        <div class="text-sm font-semibold text-text-primary">{user.full_name}</div>
+        <div class="text-xs text-text-muted capitalize">{user.role}</div>
+      </div>
+      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm">
+        {user.full_name?.charAt(0)?.toUpperCase() || 'U'}
+      </div>
+    </div>
   </div>
 </header>

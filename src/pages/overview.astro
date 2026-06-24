@@ -1,73 +1,133 @@
 ---
 import Layout from '../layouts/Layout.astro'
 import DashboardCards from '../components/DashboardCards.astro'
-import { supabase } from '../lib/supabase'
+import { createSupabaseServerClient } from '../lib/supabase-server'
 
-const user = Astro.locals.user as import('../types/profile').Profile
+const { client: supabase } = createSupabaseServerClient()
+const token = Astro.locals.token as string | undefined
+let profile: any = null
+if (token) {
+  const { data: { user: authUser } } = await supabase.auth.getUser(token)
+  if (authUser) {
+    profile = (await supabase.from('profiles').select('*').eq('id', authUser.id).single()).data
+  }
+}
 
-const { data: students } = await supabase.from('students').select('*').eq('branch', user.branch)
+const { data: students } = await supabase.from('students').select('*').eq('branch', profile?.branch)
 
 const totalStudents = students?.length ?? 0
 const newLeads = students?.filter(s => s.status === 'lead').length ?? 0
 const appliedStudents = students?.filter(s => s.status === 'applied').length ?? 0
 const visaApproved = students?.filter(s => s.status === 'visa_approved').length ?? 0
 
-const today = new Date().toISOString().split('T')[0]
-const { count: todayFollowups } = await supabase
-  .from('followups')
-  .select('*', { count: 'exact', head: true })
-  .eq('next_date', today)
-  .eq('status', 'pending')
-
 const { count: pendingDocuments } = await supabase
   .from('students')
   .select('*', { count: 'exact', head: true })
   .eq('status', 'documents_pending')
-  .eq('branch', user.branch)
+.eq('branch', profile?.branch)
+
+const stages = [
+  { key: 'lead', label: 'Lead', color: 'bg-amber-500' },
+  { key: 'documents_pending', label: 'Documents', color: 'bg-blue-500' },
+  { key: 'applied', label: 'Applied', color: 'bg-violet-500' },
+  { key: 'coe_received', label: 'COE Received', color: 'bg-cyan-500' },
+  { key: 'visa_approved', label: 'Visa Approved', color: 'bg-emerald-500' },
+  { key: 'joined', label: 'Joined', color: 'bg-green-500' },
+]
+
+const statusStyles: Record<string, string> = {
+  lead: 'bg-amber-50 text-amber-700 border-amber-200',
+  applied: 'bg-violet-50 text-violet-700 border-violet-200',
+  visa_approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  documents_pending: 'bg-blue-50 text-blue-700 border-blue-200',
+  coe_received: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  joined: 'bg-green-50 text-green-700 border-green-200',
+}
 ---
 
-<Layout title="Dashboard" user={user}>
+<Layout title="Dashboard" user={profile}>
   <div class="space-y-6">
+    <div>
+      <h1 class="text-xl lg:text-2xl font-bold text-text-primary">Dashboard</h1>
+      <p class="text-sm text-text-muted mt-1">Welcome back, {profile?.full_name?.split(' ')[0] || 'User'} &mdash; here&rsquo;s your overview.</p>
+    </div>
+
     <DashboardCards
       totalStudents={totalStudents}
       newLeads={newLeads}
       appliedStudents={appliedStudents}
       visaApproved={visaApproved}
-      todayFollowups={todayFollowups ?? 0}
       pendingDocuments={pendingDocuments ?? 0}
     />
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <h2 class="text-base font-semibold text-gray-900 mb-4">Recent Students</h2>
-        {students && students.length > 0 ? (
-          <ul class="space-y-3">
-            {students.slice(0, 5).map(s => (
-              <li class="flex items-center justify-between text-sm">
-                <a href={`/students/${s.id}`} class="font-medium text-gray-900 hover:text-indigo-600">{s.name}</a>
-                <span class="text-xs capitalize text-gray-500">{s.status.replace(/_/g, ' ')}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="text-sm text-gray-400">No students yet. <a href="/students/new" class="text-indigo-600">Add one</a></p>
-        )}
+    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+      {stages.map(stage => {
+        const count = students?.filter(s => s.status === stage.key).length ?? 0
+        return (
+          <a
+            href={`/students?status=${stage.key}`}
+            class="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg border border-border text-xs sm:text-sm font-medium text-text-secondary hover:border-primary-300 hover:text-primary-700 hover:bg-primary-50 transition-all duration-200"
+          >
+            <span class={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${stage.color}`} />
+            <span class="hidden sm:inline">{stage.label}</span>
+            <span class="sm:hidden">{stage.label.substring(0, 4)}</span>
+            <span class="bg-gray-100 text-text-muted text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full min-w-[18px] sm:min-w-[20px] text-center">{count}</span>
+          </a>
+        )
+      })}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-7 gap-6">
+      <div class="lg:col-span-4 card">
+        <div class="card-header flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-text-primary">Recent Students</h2>
+          <a href="/students" class="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors">View all</a>
+        </div>
+        <div class="divide-y divide-border-light">
+          {students && students.length > 0 ? students.slice(0, 5).map(s => (
+            <a href={`/students/${s.id}`} class="flex items-center justify-between px-6 py-3.5 hover:bg-surface-hover transition-colors group">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {s.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div class="text-sm font-semibold text-text-primary group-hover:text-primary-600 transition-colors">{s.name}</div>
+                  <div class="text-xs text-text-muted">{s.mobile}</div>
+                </div>
+              </div>
+              <span class={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${statusStyles[s.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                {s.status.replace(/_/g, ' ')}
+              </span>
+            </a>
+          )) : (
+            <div class="flex flex-col items-center py-12 text-text-muted">
+              <svg class="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>
+              <p class="text-sm font-medium">No students yet</p>
+              <a href="/students/new" class="text-xs text-primary-600 hover:text-primary-700 mt-1 font-semibold">Add your first student</a>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <h2 class="text-base font-semibold text-gray-900 mb-4">Student Journey</h2>
-        <div class="space-y-2">
-          {['lead', 'documents_pending', 'applied', 'coe_received', 'visa_approved', 'joined'].map(stage => {
-            const count = students?.filter(s => s.status === stage).length ?? 0
+      <div class="lg:col-span-3 card">
+        <div class="card-header">
+          <h2 class="text-sm font-semibold text-text-primary">Student Journey</h2>
+        </div>
+        <div class="card-body space-y-4">
+          {stages.map(stage => {
+            const count = students?.filter(s => s.status === stage.key).length ?? 0
             const pct = totalStudents > 0 ? Math.round((count / totalStudents) * 100) : 0
             return (
-              <div key={stage} class="text-sm">
-                <div class="flex justify-between mb-1">
-                  <span class="text-gray-600 capitalize">{stage.replace(/_/g, ' ')}</span>
-                  <span class="font-medium text-gray-900">{count}</span>
+              <div>
+                <div class="flex items-center justify-between text-sm mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class={`w-2 h-2 rounded-full ${stage.color}`} />
+                    <span class="text-text-secondary">{stage.label}</span>
+                  </div>
+                  <span class="font-bold text-text-primary">{count}</span>
                 </div>
-                <div class="w-full bg-gray-100 rounded-full h-1.5">
-                  <div class="bg-indigo-500 h-1.5 rounded-full" style={`width: ${pct}%`} />
+                <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div class={`${stage.color} h-2 rounded-full transition-all duration-700`} style={`width: ${pct}%`} />
                 </div>
               </div>
             )

@@ -1,134 +1,136 @@
 ---
 import Layout from '../../layouts/Layout.astro'
-import { supabase } from '../../lib/supabase'
+import { createSupabaseServerClient } from '../../lib/supabase-server'
 
-const user = Astro.locals.user as import('../../types/profile').Profile
+const { client: supabase } = createSupabaseServerClient()
+const token = Astro.locals.token as string | undefined
+let profile: any = null
+if (token) {
+  const { data: { user: authUser } } = await supabase.auth.getUser(token)
+  if (authUser) {
+    profile = (await supabase.from('profiles').select('*').eq('id', authUser.id).single()).data
+  }
+}
 
-const { data: branchUsers } = user.role === 'admin'
+const { data: branchUsers } = profile?.role === 'admin'
   ? await supabase.from('profiles').select('*').order('created_at')
-  : await supabase.from('profiles').select('*').eq('branch', user.branch).order('created_at')
+  : await supabase.from('profiles').select('*').eq('branch', profile?.branch).order('created_at')
 
-const { data: adminEmails } = user.role === 'admin'
+const { data: adminEmails } = profile?.role === 'admin'
   ? await supabase.from('admin_emails').select('*').order('created_at')
   : { data: null }
 ---
 
-<Layout title="Settings" user={user}>
-  <div class="max-w-3xl space-y-6">
-    <h1 class="text-2xl font-bold text-gray-900">Settings</h1>
+<Layout title="Settings" user={profile}>
+    <div class="max-w-3xl space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <h1 class="text-xl lg:text-2xl font-bold text-text-primary">Settings</h1>
+      <a href="/api/export/csv" class="btn-secondary text-sm self-start sm:self-auto">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+        Export CSV
+      </a>
+    </div>
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 class="text-base font-semibold text-gray-900 mb-3">Profile</h2>
-      <div class="text-sm space-y-2">
-        <div><span class="text-gray-500">Name:</span> <span class="font-medium">{user.full_name}</span></div>
-        <div><span class="text-gray-500">Email:</span> <span class="font-medium">{user.email}</span></div>
-        <div><span class="text-gray-500">Role:</span> <span class="font-medium capitalize">{user.role}</span></div>
-        <div><span class="text-gray-500">Branch:</span> <span class="font-medium capitalize">{user.branch}</span></div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="text-sm font-bold text-text-primary">Profile</h2>
+      </div>
+      <div class="card-body">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-violet-600 flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-sm">
+            {(profile?.full_name ?? '?').charAt(0).toUpperCase()}
+          </div>
+          <div class="text-sm space-y-1">
+            <div class="font-semibold text-text-primary">{profile?.full_name}</div>
+            <div class="text-text-muted">{profile?.email}</div>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="status-badge border bg-primary-50 text-primary-700 border-primary-200 capitalize">{profile?.role}</span>
+              <span class="status-badge border bg-gray-100 text-gray-600 border-gray-200 capitalize">{profile?.branch}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    {user.role === 'admin' && (
-      <>
-        <div class="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 class="text-base font-semibold text-gray-900 mb-3">Team Members</h2>
-          <div class="space-y-3 mb-4">
-            {branchUsers?.map(p => (
-              <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                <div>
-                  <div class="font-medium text-sm text-gray-900">{p.full_name}</div>
-                  <div class="text-xs text-gray-500">{p.email}</div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="text-sm font-bold text-text-primary">Team Members</h2>
+      </div>
+      <div class="card-body">
+        <div class="space-y-1">
+          {branchUsers?.map(p => (
+            <div class="flex items-center justify-between py-3 border-b border-border-light last:border-b-0">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  {p.full_name.charAt(0).toUpperCase()}
                 </div>
-                <div class="flex items-center gap-2">
+                <div>
+                  <div class="text-sm font-semibold text-text-primary">{p.full_name}</div>
+                  <div class="text-xs text-text-muted">{p.email}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                {profile?.role === 'admin' ? (
                   <form method="POST" action="/api/settings/update-role">
                     <input type="hidden" name="user_id" value={p.id} />
-                    <select
-                      name="role"
-                      onchange="this.form.submit()"
-                      class="text-xs px-2 py-1 border border-gray-300 rounded-md capitalize"
-                      disabled={p.id === user.id}
-                    >
+                    <select name="role" onchange="this.form.submit()" class="input-field text-xs py-1 w-auto" disabled={p.id === profile?.id}>
                       {['admin', 'counsellor', 'staff'].map(r => (
                         <option value={r} selected={p.role === r}>{r}</option>
                       ))}
                     </select>
                   </form>
-                </div>
+                ) : (
+                  <span class="status-badge border bg-gray-100 text-gray-600 border-gray-200 capitalize">{p.role}</span>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 class="text-base font-semibold text-gray-900 mb-3">Admin Email Whitelist</h2>
-          <p class="text-xs text-gray-500 mb-4">
-            Users signing up with these email addresses will automatically get the admin role.
-          </p>
-
-          <form method="POST" action="/api/settings/add-admin-email" class="flex gap-2 mb-4">
-            <input
-              type="email"
-              name="email"
-              placeholder="admin@example.com"
-              required
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-            <button
-              type="submit"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-            >
-              Add Email
-            </button>
-          </form>
-
-          {adminEmails && adminEmails.length > 0 ? (
-            <div class="space-y-2">
-              {adminEmails.map(e => (
-                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                  <span class="text-sm text-gray-700">{e.email}</span>
-                  <form method="POST" action="/api/settings/remove-admin-email">
-                    <input type="hidden" name="email" value={e.email} />
-                    <button
-                      type="submit"
-                      class="text-xs text-red-500 hover:text-red-700 font-medium"
-                    >
-                      Remove
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p class="text-sm text-gray-400">No admin emails whitelisted yet.</p>
-          )}
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 class="text-base font-semibold text-gray-900 mb-3">Export</h2>
-          <a
-            href="/api/export/csv"
-            class="inline-block px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-          >
-            Export Students CSV
-          </a>
-        </div>
-      </>
-    )}
-
-    {user.role !== 'admin' && (
-      <div class="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 class="text-base font-semibold text-gray-900 mb-3">Team Members</h2>
-        <div class="space-y-3">
-          {branchUsers?.map(p => (
-            <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-              <div>
-                <div class="font-medium text-sm text-gray-900">{p.full_name}</div>
-                <div class="text-xs text-gray-500">{p.email}</div>
-              </div>
-              <span class="text-xs font-medium capitalize px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">{p.role}</span>
             </div>
           ))}
         </div>
       </div>
+    </div>
+
+    {profile?.role === 'admin' && (
+      <>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="text-sm font-bold text-text-primary">Admin Email Whitelist</h2>
+          </div>
+          <div class="card-body">
+            <p class="text-xs text-text-muted mb-4">Users signing up with these email addresses will automatically get the admin role.</p>
+
+            <form method="POST" action="/api/settings/add-admin-email" class="flex flex-col sm:flex-row gap-2 mb-4">
+              <div class="relative flex-1">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                <input type="email" name="email" placeholder="admin@example.com" required class="input-field pl-9" />
+              </div>
+              <button type="submit" class="btn-primary shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                Add Email
+              </button>
+            </form>
+
+            {adminEmails && adminEmails.length > 0 ? (
+              <div class="space-y-1">
+                {adminEmails.map(e => (
+                  <div class="flex items-center justify-between py-3 border-b border-border-light last:border-b-0">
+                    <div class="flex items-center gap-3">
+                      <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                      <span class="text-sm font-semibold text-text-primary">{e.email}</span>
+                    </div>
+                    <form method="POST" action="/api/settings/remove-admin-email">
+                      <input type="hidden" name="email" value={e.email} />
+                      <button type="submit" class="text-xs font-semibold text-red-500 hover:text-red-700 transition-all duration-200">Remove</button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p class="text-sm text-text-muted text-center py-4">No admin emails whitelisted yet.</p>
+            )}
+          </div>
+        </div>
+
+      </> 
     )}
   </div>
 </Layout>

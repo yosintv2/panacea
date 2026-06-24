@@ -8,14 +8,7 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   output: 'server',
   adapter: cloudflare({
-    mode: 'directory',
-    runtime: {
-      mode: 'local',
-      bindings: {
-        assets: { binding: 'STATIC_ASSETS' },
-      },
-    },
-    wasm: { module: null },
+    mode: 'advanced',
     imageService: 'passthrough',
   }),
   vite: {

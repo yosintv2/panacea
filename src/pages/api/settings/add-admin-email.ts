@@ -1,31 +1,19 @@
-import { supabase } from '../../../lib/supabase'
-import { createSupabaseServerClient } from '../../../lib/supabase-server'
+import { getAuthToken, getServerUser, createSupabaseServerClient } from '../../../lib/supabase-server'
 
 export async function POST({ request }: { request: Request }): Promise<Response> {
-  const supabaseServer = createSupabaseServerClient(request)
-  const { data: { user: authUser } } = await supabaseServer.auth.getUser()
-  if (!authUser) return new Response('Unauthorized', { status: 401 })
+  const token = getAuthToken(request)
+  if (!token) return new Response('Unauthorized', { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', authUser.id)
-    .single()
-
-  if (profile?.role !== 'admin') return new Response('Forbidden', { status: 403 })
+  const auth = await getServerUser(token)
+  if (!auth?.profile || auth.profile.role !== 'admin') return new Response('Forbidden', { status: 403 })
 
   const form = await request.formData()
-  const email = (form.get('email') as string)?.trim().toLowerCase()
+  const email = form.get('email') as string
 
-  if (!email) return new Response('Email required', { status: 400 })
+  const { client: supabase } = createSupabaseServerClient()
+  const { error } = await supabase.from('admin_emails').insert({ email })
 
-  const { error } = await supabase
-    .from('admin_emails')
-    .insert({ email, added_by: authUser.id })
-
-  if (error) {
-    return new Response(error.message, { status: 400 })
-  }
+  if (error) return new Response(error.message, { status: 400 })
 
   return new Response(null, {
     status: 302,

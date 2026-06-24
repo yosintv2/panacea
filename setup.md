@@ -117,9 +117,6 @@ contact
 
 /counselling
 
-/followups
-
-/calendar
 
 /settings
 ```

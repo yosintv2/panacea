@@ -1,0 +1,421 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { createSupabaseServerClient } from '../../lib/supabase-server'
+
+const { client: supabase } = createSupabaseServerClient()
+const token = Astro.locals.token as string | undefined
+let authUser: any = null
+let profile: any = null
+if (token) {
+  const { data: { user } } = await supabase.auth.getUser(token)
+  authUser = user
+  if (authUser) {
+    profile = (await supabase.from('profiles').select('*').eq('id', authUser.id).single()).data
+  }
+}
+
+const { data: groups } = await supabase.from('attendance_groups').select('*').order('name')
+const { data: allStudents } = await supabase.from('students').select('id, name, mobile').order('name')
+
+let selectedGroup = groups?.[0] ?? null
+let attendanceDate = new Date().toISOString().split('T')[0]
+let view = 'mark'
+
+const groupParam = Astro.url.searchParams.get('group')
+const dateParam = Astro.url.searchParams.get('date')
+const viewParam = Astro.url.searchParams.get('view')
+
+if (groupParam && groups?.find(g => g.id === groupParam)) selectedGroup = groups.find(g => g.id === groupParam)!
+else if (!selectedGroup && groups?.length) selectedGroup = groups[0]
+if (dateParam) attendanceDate = dateParam
+if (viewParam === 'report') view = 'report'
+
+let groupStudents: any[] = []
+let attendanceRecords: any[] = []
+
+let reportMonth = attendanceDate.substring(0, 7)
+let reportDays: number[] = []
+let reportData: Record<string, Record<number, boolean | null>> = {}
+let reportSummary: Record<string, { present: number; absent: number }> = {}
+
+const monthParam = Astro.url.searchParams.get('month')
+if (monthParam) reportMonth = monthParam
+if (view === 'report') {
+  const [yr, mo] = reportMonth.split('-').map(Number)
+  const daysInMonth = new Date(yr, mo, 0).getDate()
+  reportDays = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+
+  if (selectedGroup) {
+    const gs = await supabase.from('group_students').select('*, students(id, name, mobile)').eq('group_id', selectedGroup.id)
+    groupStudents = gs.data ?? []
+
+    const startDate = `${reportMonth}-01`
+    const endDate = `${reportMonth}-${String(daysInMonth).padStart(2, '0')}`
+    const ar = await supabase.from('attendance_records').select('*').eq('group_id', selectedGroup.id).gte('date', startDate).lte('date', endDate)
+    const records = ar.data ?? []
+
+    for (const gs of groupStudents) {
+      const sid = gs.student_id
+      reportData[sid] = {}
+      reportSummary[sid] = { present: 0, absent: 0 }
+      for (const day of reportDays) {
+        const dateStr = `${reportMonth}-${String(day).padStart(2, '0')}`
+        const rec = records.find(r => r.student_id === sid && r.date === dateStr)
+        reportData[sid][day] = rec?.present ?? null
+        if (rec?.present === true) reportSummary[sid].present++
+        else if (rec?.present === false) reportSummary[sid].absent++
+      }
+    }
+  }
+} else if (selectedGroup) {
+  const gs = await supabase.from('group_students').select('*, students(id, name, mobile)').eq('group_id', selectedGroup.id)
+  groupStudents = gs.data ?? []
+
+  const ar = await supabase.from('attendance_records').select('*').eq('group_id', selectedGroup.id).eq('date', attendanceDate)
+  attendanceRecords = ar.data ?? []
+}
+
+let msg: string | null = null
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData()
+  const action = form.get('action') as string
+
+  if (action === 'add_group') {
+    const name = form.get('name') as string
+    const { error } = await supabase.from('attendance_groups').insert({ name })
+    if (!error) return Astro.redirect(`/attendance?view=${view}`)
+    msg = error.message
+  }
+
+  if (action === 'add_students') {
+    const gid = form.get('group_id') as string
+    const sids = form.getAll('student_ids') as string[]
+    const rows = sids.map(sid => ({ group_id: gid, student_id: sid }))
+    const { error } = await supabase.from('group_students').insert(rows)
+    if (!error) return Astro.redirect(`/attendance?group=${gid}&view=${view}`)
+    msg = error.message
+  }
+
+  if (action === 'remove_student') {
+    const gsid = form.get('gs_id') as string
+    const { error } = await supabase.from('group_students').delete().eq('id', gsid)
+    if (!error) return Astro.redirect(`/attendance?group=${form.get('group_id')}&view=${view}`)
+    msg = error.message
+  }
+
+  if (action === 'attendance_add_student') {
+    const gid = form.get('group_id') as string
+    const name = form.get('name') as string
+    const mobile = form.get('mobile') as string
+    const { data, error } = await supabase.from('students').insert({
+      name, mobile,
+      branch: profile?.branch ?? 'kathmandu',
+      status: 'lead',
+      lead_source: 'walk_in',
+      created_by: authUser?.id ?? '00000000-0000-0000-0000-000000000000',
+    }).select().single()
+    if (!error && data) {
+      await supabase.from('group_students').insert({ group_id: gid, student_id: data.id })
+      return Astro.redirect(`/attendance?group=${gid}&view=${view}`)
+    }
+    msg = error?.message ?? 'Error adding student'
+  }
+
+  if (action === 'save_attendance') {
+    const gid = form.get('group_id') as string
+    const date = form.get('attendance_date') as string
+    const presentIds = form.getAll('present') as string[]
+
+    const { data: gsList } = await supabase.from('group_students').select('student_id').eq('group_id', gid)
+    const allStudentIds = (gsList ?? []).map(r => r.student_id)
+
+    const toUpsert = allStudentIds.map(sid => ({
+      group_id: gid,
+      student_id: sid,
+      date,
+      present: presentIds.includes(sid),
+    }))
+
+    const { error } = await supabase.from('attendance_records').upsert(toUpsert, { onConflict: 'group_id,student_id,date' })
+    if (!error) return Astro.redirect(`/attendance?group=${gid}&date=${date}&view=${view}`)
+    msg = error.message
+  }
+}
+---
+
+<Layout title="Attendance" user={profile}>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl lg:text-2xl font-bold text-text-primary">Attendance</h1>
+        <p class="text-sm text-text-muted mt-1">Track daily attendance and generate monthly reports</p>
+      </div>
+      <button id="add-group-btn" class="btn-primary">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        Add Group
+      </button>
+    </div>
+
+    {msg && <div class="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{msg}</div>}
+
+    <div class="flex items-center gap-2 border-b border-border pb-0">
+      <a href={`?group=${selectedGroup?.id ?? ''}&date=${attendanceDate}&view=mark`} class={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all duration-200 ${view === 'mark' ? 'border-primary-500 text-primary-700' : 'border-transparent text-text-muted hover:text-text-secondary hover:border-gray-300'}`}>Mark Attendance</a>
+      <a href={`?group=${selectedGroup?.id ?? ''}&month=${reportMonth}&view=report`} class={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all duration-200 ${view === 'report' ? 'border-primary-500 text-primary-700' : 'border-transparent text-text-muted hover:text-text-secondary hover:border-gray-300'}`}>Monthly Report</a>
+    </div>
+
+    <div class="flex items-center gap-2 border-b border-border pb-0 hide-scrollbar overflow-x-auto">
+      {groups?.map(g => {
+        const isActive = selectedGroup?.id === g.id
+        return (
+          <a href={view === 'report' ? `?group=${g.id}&month=${reportMonth}&view=report` : `?group=${g.id}&date=${attendanceDate}&view=mark`} class={`shrink-0 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all duration-200 ${isActive ? 'border-primary-500 text-primary-700' : 'border-transparent text-text-muted hover:text-text-secondary hover:border-gray-300'}`}>{g.name}</a>
+        )
+      })}
+      {(!groups || groups.length === 0) && <span class="text-sm text-text-muted py-2.5">No groups yet.</span>}
+    </div>
+
+    {selectedGroup && view === 'mark' && (
+      <>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div class="flex items-center gap-2">
+            <label class="input-label mb-0">Date:</label>
+            <input type="date" id="attendance-date" value={attendanceDate} class="input-field w-auto" />
+          </div>
+          <button id="manage-students-btn" class="btn-secondary text-sm">Manage Students</button>
+        </div>
+        <form id="attendance-form" method="POST">
+          <input type="hidden" name="action" value="save_attendance" />
+          <input type="hidden" name="group_id" value={selectedGroup.id} />
+          <input type="hidden" name="attendance_date" id="hidden-date" value={attendanceDate} />
+          <div class="card overflow-hidden">
+            <div class="mobile-table">
+              <table class="table-base">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th class="text-center">Present</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupStudents.map(gs => {
+                    const student = (gs.students as any)
+                    const record = attendanceRecords.find(r => r.student_id === gs.student_id)
+                    const isPresent = record ? record.present : false
+                    return (
+                      <tr class="hover:bg-surface-hover transition-all duration-200">
+                        <td>
+                          <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">{(student?.name ?? '?').charAt(0).toUpperCase()}</div>
+                            <div><div class="font-semibold text-text-primary whitespace-nowrap">{student?.name ?? 'Unknown'}</div><div class="text-xs text-text-muted">{student?.mobile}</div></div>
+                          </div>
+                        </td>
+                        <td class="text-center">
+                          <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="present" value={gs.student_id} checked={isPresent} class="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                            <span class={`text-sm font-semibold ${isPresent ? 'text-emerald-600' : 'text-text-muted'}`}>{isPresent ? 'Present' : 'Absent'}</span>
+                          </label>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {groupStudents.length === 0 && (
+              <div class="flex flex-col items-center py-12 text-text-muted">
+                <svg class="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <p class="text-sm font-medium">No students in this group</p>
+                <p class="text-xs mt-1">Click "Manage Students" to add students.</p>
+              </div>
+            )}
+          </div>
+          {groupStudents.length > 0 && (
+            <button type="submit" class="btn-primary">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              Save Attendance
+            </button>
+          )}
+        </form>
+      </>
+    )}
+
+    {selectedGroup && view === 'report' && (
+      <>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div class="flex items-center gap-2">
+            <label class="input-label mb-0">Month:</label>
+            <input type="month" id="report-month" value={reportMonth} class="input-field w-auto" />
+          </div>
+          <button id="manage-students-btn-report" class="btn-secondary text-sm">Manage Students</button>
+        </div>
+        <div class="card overflow-hidden overflow-x-auto">
+          <table class="table-base whitespace-nowrap text-xs">
+            <thead>
+              <tr>
+                <th class="sticky left-0 bg-surface-subtle z-10">Student</th>
+                {reportDays.map(day => (
+                  <th class="text-center w-8 px-1">{day}</th>
+                ))}
+                <th class="text-center text-emerald-600">P</th>
+                <th class="text-center text-red-600">A</th>
+                <th class="text-center text-primary-600">Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupStudents.map(gs => {
+                const student = (gs.students as any)
+                const sid = gs.student_id
+                const summary = reportSummary[sid] ?? { present: 0, absent: 0 }
+                const total = summary.present + summary.absent
+                const rate = total > 0 ? Math.round((summary.present / total) * 100) : 0
+                return (
+                  <tr class="hover:bg-surface-hover">
+                    <td class="sticky left-0 bg-white z-10">
+                      <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">{(student?.name ?? '?').charAt(0).toUpperCase()}</div>
+                        <span class="font-semibold text-text-primary text-xs">{student?.name ?? 'Unknown'}</span>
+                      </div>
+                    </td>
+                    {reportDays.map(day => {
+                      const val = reportData[sid]?.[day]
+                      return (
+                        <td class={`text-center font-bold px-1 ${val === true ? 'text-emerald-600' : val === false ? 'text-red-500' : 'text-gray-300'}`}>
+                          {val === true ? 'P' : val === false ? 'A' : '-'}
+                        </td>
+                      )
+                    })}
+                    <td class="text-center font-bold text-emerald-600">{summary.present}</td>
+                    <td class="text-center font-bold text-red-600">{summary.absent}</td>
+                    <td class="text-center font-bold text-primary-600">{rate}%</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          {groupStudents.length === 0 && (
+            <div class="flex flex-col items-center py-12 text-text-muted">
+              <p class="text-sm font-medium">No students in this group.</p>
+            </div>
+          )}
+        </div>
+      </>
+    )}
+  </div>
+
+  <div id="add-group-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-scale-in">
+      <div class="border-b border-border-light px-6 py-4 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-text-primary">New Group</h2>
+        <button type="button" id="close-add-group" class="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-surface-hover"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+      </div>
+      <form method="POST" class="p-6 space-y-4">
+        <input type="hidden" name="action" value="add_group" />
+        <div>
+          <label class="input-label">Group Name *</label>
+          <input type="text" name="name" required placeholder="e.g. Group 1" class="input-field" />
+        </div>
+        <div class="flex items-center gap-3 pt-2">
+          <button type="submit" class="btn-primary">Create</button>
+          <button type="button" class="btn-secondary close-add-group-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="manage-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl animate-scale-in">
+      <div class="border-b border-border-light px-6 py-4 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-text-primary">Manage Students &mdash; {selectedGroup?.name}</h2>
+        <button type="button" id="close-manage" class="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-surface-hover"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+      </div>
+      {selectedGroup && (
+        <div class="p-6 space-y-6">
+          <form method="POST" class="space-y-3">
+            <input type="hidden" name="action" value="add_students" />
+            <input type="hidden" name="group_id" value={selectedGroup.id} />
+            <h3 class="text-sm font-bold text-text-primary">Add Existing Students</h3>
+            <input type="text" id="student-search" placeholder="Search students..." class="input-field" />
+            <div id="student-list" class="max-h-48 overflow-y-auto space-y-2 border border-border rounded-lg p-3">
+              {allStudents?.filter(s => !groupStudents.find(gs => gs.student_id === s.id)).map(s => (
+                <label class="student-item flex items-center gap-2 text-sm cursor-pointer hover:bg-surface-hover px-2 py-1 rounded-lg transition-colors">
+                  <input type="checkbox" name="student_ids" value={s.id} class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                  <span class="text-text-secondary">{s.name} &mdash; {s.mobile}</span>
+                </label>
+              ))}
+              {(!allStudents || allStudents.length === 0) && <p class="text-sm text-text-muted">No students available.</p>}
+            </div>
+            <button type="submit" class="btn-primary text-sm">Add Selected</button>
+          </form>
+
+          <div class="border-t border-border-light pt-4">
+            <details class="group">
+              <summary class="text-sm font-bold text-text-primary cursor-pointer hover:text-primary-600 transition-colors list-none flex items-center gap-2">
+                <svg class="w-4 h-4 text-text-muted group-open:rotate-45 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                Quick Add New Student
+              </summary>
+              <form method="POST" class="mt-3 space-y-3">
+                <input type="hidden" name="action" value="attendance_add_student" />
+                <input type="hidden" name="group_id" value={selectedGroup.id} />
+                <input type="text" name="name" required placeholder="Full name" class="input-field" />
+                <input type="tel" name="mobile" required placeholder="Mobile number" class="input-field" />
+                <button type="submit" class="btn-primary text-sm">Add & Assign to Group</button>
+              </form>
+            </details>
+          </div>
+          <div class="border-t border-border-light pt-4">
+            <h3 class="text-sm font-bold text-text-primary mb-2">Current Students</h3>
+            <div class="space-y-2">
+              {groupStudents.map(gs => {
+                const student = (gs.students as any)
+                return (
+                  <form method="POST" class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-surface-hover transition-colors">
+                    <input type="hidden" name="action" value="remove_student" />
+                    <input type="hidden" name="gs_id" value={gs.id} />
+                    <input type="hidden" name="group_id" value={selectedGroup.id} />
+                    <span class="text-sm text-text-secondary">{student?.name ?? 'Unknown'} &mdash; {student?.mobile}</span>
+                    <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-semibold">Remove</button>
+                  </form>
+                )
+              })}
+              {groupStudents.length === 0 && <p class="text-sm text-text-muted">No students in this group.</p>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+
+  <script is:inline>
+    document.getElementById('add-group-btn')?.addEventListener('click', () => document.getElementById('add-group-modal')?.classList.remove('hidden'));
+    document.getElementById('close-add-group')?.addEventListener('click', () => document.getElementById('add-group-modal')?.classList.add('hidden'));
+    document.querySelector('.close-add-group-btn')?.addEventListener('click', () => document.getElementById('add-group-modal')?.classList.add('hidden'));
+
+    function openManage() { document.getElementById('manage-modal')?.classList.remove('hidden'); }
+    document.getElementById('manage-students-btn')?.addEventListener('click', openManage);
+    document.getElementById('manage-students-btn-report')?.addEventListener('click', openManage);
+    document.getElementById('close-manage')?.addEventListener('click', () => document.getElementById('manage-modal')?.classList.add('hidden'));
+
+    document.getElementById('attendance-date')?.addEventListener('change', function() {
+      const params = new URLSearchParams(window.location.search);
+      params.set('date', this.value);
+      window.location.href = '?' + params.toString();
+    });
+
+    document.getElementById('attendance-form')?.addEventListener('submit', function() {
+      document.getElementById('hidden-date').value = document.getElementById('attendance-date').value;
+    });
+
+    document.getElementById('report-month')?.addEventListener('change', function() {
+      const params = new URLSearchParams(window.location.search);
+      params.set('month', this.value);
+      window.location.href = '?' + params.toString();
+    });
+
+    document.getElementById('student-search')?.addEventListener('input', function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll('.student-item').forEach(el => {
+        el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+  </script>
+</Layout>

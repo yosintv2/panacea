@@ -7,63 +7,72 @@ export interface Props {
 }
 
 const { students, showActions = true } = Astro.props
+
+const statusStyles: Record<string, string> = {
+  lead: 'bg-amber-50 text-amber-700 border-amber-200',
+  documents_pending: 'bg-blue-50 text-blue-700 border-blue-200',
+  applied: 'bg-violet-50 text-violet-700 border-violet-200',
+  coe_received: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  visa_approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  joined: 'bg-green-50 text-green-700 border-green-200',
+  cancelled: 'bg-red-50 text-red-700 border-red-200',
+}
 ---
 
-<div class="overflow-x-auto bg-white rounded-xl border border-gray-200 shadow-sm">
-  <table class="w-full text-sm">
+<div class="mobile-table">
+  <table class="table-base">
     <thead>
-      <tr class="border-b border-gray-200 bg-gray-50 text-left text-gray-600 font-medium">
-        <th class="px-4 py-3">Name</th>
-        <th class="px-4 py-3">Mobile</th>
-        <th class="px-4 py-3">Source</th>
-        <th class="px-4 py-3">Status</th>
-        <th class="px-4 py-3">Branch</th>
-        <th class="px-4 py-3">Created</th>
-        {showActions && <th class="px-4 py-3 text-right">Actions</th>}
+      <tr>
+        <th>Student</th>
+        <th>Contact</th>
+        <th>Source</th>
+        <th>Status</th>
+        <th>Branch</th>
+        <th>Created</th>
+        {showActions && <th class="text-right">Action</th>}
       </tr>
     </thead>
     <tbody>
       {students.map(s => (
-        <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-          <td class="px-4 py-3 font-medium text-gray-900">
-            <a href={`/students/${s.id}`} class="hover:text-indigo-600">{s.name}</a>
+        <tr class="group cursor-pointer transition-all duration-150 hover:bg-surface-hover/80" onclick={`window.location.href='/students/${s.id}'`} role="link" tabindex="0" onkeydown={`if(event.key==='Enter')window.location.href='/students/${s.id}'`}>
+          <td>
+            <div class="flex items-center gap-3 pointer-events-none">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                {s.name.charAt(0).toUpperCase()}
+              </div>
+              <span class="font-semibold text-text-primary">{s.name}</span>
+            </div>
           </td>
-          <td class="px-4 py-3 text-gray-600">{s.mobile}</td>
-          <td class="px-4 py-3">
-            <span class="capitalize text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-              {s.lead_source.replace('_', ' ')}
+          <td>
+            <div class="text-text-secondary whitespace-nowrap">{s.mobile}</div>
+            {s.email && <div class="text-xs text-text-muted">{s.email}</div>}
+          </td>
+          <td>
+            <span class="inline-flex items-center gap-1 text-xs text-text-muted bg-gray-100 px-2 py-1 rounded-md capitalize whitespace-nowrap">
+              {s.lead_source.replace(/_/g, ' ')}
             </span>
           </td>
-          <td class="px-4 py-3">
-            <span class="capitalize text-xs font-medium px-2 py-0.5 rounded-full
-              {s.status === 'lead' && 'bg-yellow-100 text-yellow-800'}
-              {s.status === 'visa_approved' && 'bg-green-100 text-green-800'}
-              {s.status === 'applied' && 'bg-blue-100 text-blue-800'}
-              {s.status === 'joined' && 'bg-emerald-100 text-emerald-800'}
-              {s.status === 'cancelled' && 'bg-red-100 text-red-800'}
-            ">
+          <td>
+            <span class={`status-badge border whitespace-nowrap ${statusStyles[s.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
               {s.status.replace(/_/g, ' ')}
             </span>
           </td>
-          <td class="px-4 py-3 text-gray-600 capitalize">{s.branch}</td>
-          <td class="px-4 py-3 text-gray-500 text-xs">
-            {new Date(s.created_at).toLocaleDateString()}
+          <td>
+            <span class="text-text-secondary capitalize text-sm whitespace-nowrap">{s.branch}</span>
+          </td>
+          <td class="text-xs text-text-muted whitespace-nowrap">
+            {new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </td>
           {showActions && (
-            <td class="px-4 py-3 text-right">
-              <a
-                href={`/students/${s.id}`}
-                class="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
-              >
+            <td class="text-right">
+              <span class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 opacity-0 group-hover:opacity-100 transition-all duration-200">
                 View
-              </a>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+              </span>
             </td>
           )}
         </tr>
       ))}
     </tbody>
   </table>
-  {students.length === 0 && (
-    <div class="p-8 text-center text-gray-400">No students found</div>
-  )}
 </div>

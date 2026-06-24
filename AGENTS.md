@@ -8,6 +8,18 @@ astro dev --background
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 
+## Deployment
+
+After building, deploy to Cloudflare Pages:
+
+```
+npm run deploy
+```
+
+This runs `astro build`, then `node scripts/postbuild.mjs` (restructures output for Pages Functions), then `wrangler pages deploy ./dist`.
+
+If the dev server is running, stop it first with `astro dev stop` before building.
+
 ## Documentation
 
 Full documentation: https://docs.astro.build

@@ -16,25 +16,63 @@ const { title, user } = Astro.props
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Panacea - Education Consultancy CRM. Replace spreadsheets and paper records. Manage students, counselling, visa applications, and follow-ups." />
+    <meta name="theme-color" content="#6366f1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <title>{title ? `${title} - Panacea` : 'Panacea CRM'}</title>
   </head>
-  <body class="h-screen flex overflow-hidden bg-gray-50 text-gray-900">
+  <body class="min-h-screen bg-surface-subtle text-text-primary antialiased">
     {
       user ? (
-        <>
+        <div class="flex h-screen overflow-hidden">
           <Sidebar user={user} />
-          <div class="flex-1 flex flex-col overflow-hidden">
+          <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             <Header user={user} />
-            <main class="flex-1 overflow-y-auto p-6">
+            <main class="flex-1 overflow-y-auto p-4 lg:p-6">
               <slot />
             </main>
           </div>
-        </>
+        </div>
       ) : (
-        <main class="flex-1 overflow-y-auto">
-          <slot />
-        </main>
+        <slot />
       )
     }
+    <script>
+      import { supabase } from '../lib/supabase'
+
+      supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.access_token) {
+          document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=86400; SameSite=Lax`
+        }
+      })
+
+      // Mobile sidebar toggle
+      const toggle = document.getElementById('sidebar-toggle')
+      const sidebar = document.getElementById('sidebar')
+      const overlay = document.getElementById('sidebar-overlay')
+
+      function openSidebar() {
+        sidebar?.classList.remove('-translate-x-full')
+        overlay?.classList.remove('opacity-0', 'pointer-events-none')
+      }
+
+      function closeSidebar() {
+        sidebar?.classList.add('-translate-x-full')
+        overlay?.classList.add('opacity-0', 'pointer-events-none')
+      }
+
+      toggle?.addEventListener('click', openSidebar)
+      overlay?.addEventListener('click', closeSidebar)
+      document.getElementById('sidebar-close')?.addEventListener('click', closeSidebar)
+
+      // Close sidebar on nav link click (mobile)
+      sidebar?.querySelectorAll('a[href]').forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 1024) closeSidebar()
+        })
+      })
+    </script>
   </body>
 </html>
