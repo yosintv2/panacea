@@ -44,7 +44,7 @@ const statusStyles: Record<string, string> = {
             </div>
           </td>
           <td>
-            <div class="text-text-secondary whitespace-nowrap">{s.mobile}</div>
+              <div class="text-text-secondary whitespace-nowrap">{s.mobile || '-'}</div>
             {s.email && <div class="text-xs text-text-muted">{s.email}</div>}
           </td>
           <td>

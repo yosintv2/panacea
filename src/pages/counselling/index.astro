@@ -63,6 +63,7 @@ if (Astro.request.method === 'POST') {
   }
 }
 const recordsJson = JSON.stringify(records)
+const debugJson = JSON.stringify(records?.[0] ?? {})
 ---
 
 <Layout title="Counselling" user={profile}>
@@ -99,17 +100,20 @@ const recordsJson = JSON.stringify(records)
           </tr>
         </thead>
         <tbody id="records-table">
-          {records?.map(r => (
+          {records?.map(r => {
+            const displayName = r.name || r.referer_name || 'Unknown'
+            const displayMobile = r.mobile || r.contact_number || '-'
+            return (
             <tr class="group cursor-pointer" onclick={`openEditModal('${r.id}')`}>
               <td>
                 <div class="flex items-center gap-3 flex-nowrap pointer-events-none">
                   <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {(r.name || '?').charAt(0).toUpperCase()}
+                    {displayName.charAt(0).toUpperCase()}
                   </div>
-                  <span class="font-semibold text-text-primary whitespace-nowrap">{r.name || 'Unknown'}</span>
+                  <span class="font-semibold text-text-primary whitespace-nowrap">{displayName}</span>
                 </div>
               </td>
-              <td class="text-text-secondary whitespace-nowrap">{r.mobile || '-'}</td>
+              <td class="text-text-secondary whitespace-nowrap">{displayMobile}</td>
               <td class="capitalize text-text-secondary whitespace-nowrap">{r.qualification || '-'}</td>
               <td class="text-text-secondary whitespace-nowrap">{r.city_choice || '-'}</td>
               <td class="text-text-secondary whitespace-nowrap">{r.visa_type || '-'}</td>
@@ -129,9 +133,10 @@ const recordsJson = JSON.stringify(records)
                   </form>
                 </div>
               </td>
-            </tr>
-          ))}
-        </tbody>
+              </tr>
+            )
+          })}
+          </tbody>
       </table>
       {(!records || records.length === 0) && (
         <div class="flex flex-col items-center py-16 text-text-muted">
