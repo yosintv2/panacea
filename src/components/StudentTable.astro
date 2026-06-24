@@ -36,7 +36,7 @@ const statusStyles: Record<string, string> = {
       {students.map(s => (
         <tr class="group cursor-pointer transition-all duration-150 hover:bg-surface-hover/80" onclick={`window.location.href='/students/${s.id}'`} role="link" tabindex="0" onkeydown={`if(event.key==='Enter')window.location.href='/students/${s.id}'`}>
           <td>
-            <div class="flex items-center gap-3 pointer-events-none">
+            <div class="flex items-center gap-3 flex-nowrap pointer-events-none">
               <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                 {s.name.charAt(0).toUpperCase()}
               </div>

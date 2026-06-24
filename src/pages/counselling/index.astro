@@ -103,7 +103,7 @@ const recordsJson = JSON.stringify(records)
             {records?.map(r => (
               <tr class="group">
                 <td>
-                  <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 flex-nowrap">
                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                       {(r.name ?? '?').charAt(0).toUpperCase()}
                     </div>
